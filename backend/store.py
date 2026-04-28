@@ -17,7 +17,13 @@ users = [
         "purpose": "Home Renovation",
         "status": "approved",
         "due_date": "2026-05-28"
-    }
+    },
+    "history": [
+        {"month": "Jan", "income": 48000, "spending": 19000, "savings": 25000, "trust_score": 80},
+        {"month": "Feb", "income": 48000, "spending": 22000, "savings": 26000, "trust_score": 78},
+        {"month": "Mar", "income": 50000, "spending": 21000, "savings": 28000, "trust_score": 82},
+        {"month": "Apr", "income": 50000, "spending": 20000, "savings": 30000, "trust_score": 85}
+    ]
   },
   {
     "id": 2,
@@ -30,6 +36,7 @@ users = [
     "savings": 0,
     "trust_score": 100,
     "risk_level": "low",
-    "loan_status": None
+    "loan_status": None,
+    "history": []
   }
 ]

@@ -60,7 +60,8 @@ def get_dashboard(user_id: int):
         "explanation": {
             "reasons": score_data["reasons"],
             "suggestions": score_data["suggestions"]
-        }
+        },
+        "history": user.get("history", [])
     }
 
 @router.post("/update-financials/{user_id}")
@@ -77,6 +78,18 @@ def update_financials(user_id: int, data: UpdateScore):
     user["spending"] = data.spending
     user["savings"] = data.savings
     user["trust_score"] = new_score
+    
+    if "history" not in user:
+        user["history"] = []
+    
+    # Just append a generic month like "Next" for simplicity in demo
+    user["history"].append({
+        "month": "Simulated",
+        "income": data.income,
+        "spending": data.spending,
+        "savings": data.savings,
+        "trust_score": new_score
+    })
         
     return score_res
 

@@ -1,28 +1,33 @@
 import React, { useEffect, useState } from "react";
 import { getAllUsers } from "../services/api";
+import { motion, AnimatePresence } from "framer-motion";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 const RiskBadge = ({ level }) => {
   const map = {
-    low: "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30",
-    medium: "bg-yellow-500/15 text-yellow-300 border border-yellow-500/30",
-    high: "bg-red-500/15 text-red-300 border border-red-500/30",
+    low: "bg-emerald-500/15 text-emerald-600 border border-emerald-500/30",
+    medium: "bg-yellow-500/15 text-yellow-600 border border-yellow-500/30",
+    high: "bg-red-500/15 text-red-600 border border-red-500/30",
   };
   const key = (level ?? "low").toLowerCase();
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold uppercase tracking-wide ${map[key] ?? map.low}`}>
-      <span className={`w-1.5 h-1.5 rounded-full ${key === "high" ? "bg-red-400" : key === "medium" ? "bg-yellow-400" : "bg-emerald-400"}`} />
+    <motion.span 
+      initial={{ scale: 0.9, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold uppercase tracking-wide ${map[key] ?? map.low}`}
+    >
+      <span className={`w-1.5 h-1.5 rounded-full ${key === "high" ? "bg-red-500" : key === "medium" ? "bg-yellow-500" : "bg-emerald-500"}`} />
       {level ?? "Low"}
-    </span>
+    </motion.span>
   );
 };
 
 const StatusPill = ({ status }) => {
   const map = {
-    active: "bg-indigo-500/15 text-indigo-300 border border-indigo-500/30",
-    inactive: "bg-slate-500/15 text-slate-400 border border-slate-600/30",
-    suspended: "bg-red-500/15 text-red-300 border border-red-500/30",
+    active: "bg-indigo-100 text-indigo-700 border border-indigo-200",
+    inactive: "bg-slate-100 text-slate-600 border border-slate-200",
+    suspended: "bg-red-100 text-red-700 border border-red-200",
   };
   const key = (status ?? "active").toLowerCase();
   return (
@@ -34,13 +39,21 @@ const StatusPill = ({ status }) => {
 
 const TrustBar = ({ score }) => {
   const color =
-    score >= 75 ? "bg-emerald-400" : score >= 50 ? "bg-yellow-400" : "bg-red-400";
+    score >= 75 ? "bg-emerald-500" : score >= 50 ? "bg-yellow-500" : "bg-red-500";
+  const textColor =
+    score >= 75 ? "text-emerald-600" : score >= 50 ? "text-yellow-600" : "text-red-600";
+    
   return (
     <div className="flex items-center gap-2">
-      <div className="flex-1 h-1.5 bg-slate-700 rounded-full overflow-hidden">
-        <div className={`h-full rounded-full transition-all duration-700 ${color}`} style={{ width: `${score}%` }} />
+      <div className="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden">
+        <motion.div 
+          initial={{ width: 0 }}
+          animate={{ width: `${score}%` }}
+          transition={{ duration: 1, ease: "easeOut" }}
+          className={`h-full rounded-full ${color}`} 
+        />
       </div>
-      <span className={`text-sm font-bold tabular-nums ${score >= 75 ? "text-emerald-400" : score >= 50 ? "text-yellow-400" : "text-red-400"}`}>
+      <span className={`text-sm font-bold tabular-nums ${textColor}`}>
         {score}
       </span>
     </div>
@@ -50,10 +63,10 @@ const TrustBar = ({ score }) => {
 // ── Skeleton row ─────────────────────────────────────────────────────────────
 
 const SkeletonRow = () => (
-  <tr className="border-b border-slate-700/50">
-    {[...Array(5)].map((_, i) => (
+  <tr className="border-b border-slate-100">
+    {[...Array(6)].map((_, i) => (
       <td key={i} className="px-6 py-4">
-        <div className="h-4 bg-slate-700/60 rounded animate-pulse" style={{ width: `${60 + i * 10}%` }} />
+        <div className="h-4 bg-slate-200 rounded animate-pulse" style={{ width: `${60 + (i % 3) * 10}%` }} />
       </td>
     ))}
   </tr>
@@ -112,7 +125,11 @@ export default function Admin() {
   const highRiskCount = users.filter((u) => (u.risk_level ?? "").toLowerCase() === "high").length;
 
   return (
-    <div className="min-h-full">
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="min-h-full"
+    >
       <div className="relative max-w-7xl mx-auto py-6">
 
         {/* ── Header ── */}
@@ -138,38 +155,51 @@ export default function Admin() {
               { label: "Low Risk", count: users.filter(u => (u.risk_level ?? "low").toLowerCase() === "low").length, color: "text-emerald-700 bg-emerald-50 border-emerald-200" },
               { label: "Medium Risk", count: users.filter(u => (u.risk_level ?? "").toLowerCase() === "medium").length, color: "text-yellow-700 bg-yellow-50 border-yellow-200" },
               { label: "High Risk", count: highRiskCount, color: "text-red-700 bg-red-50 border-red-200" },
-            ].map(({ label, count, color }) => (
-              <div key={label} className={`border rounded-xl px-4 py-2 text-center min-w-[90px] ${color}`}>
+            ].map(({ label, count, color }, i) => (
+              <motion.div 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 * i }}
+                key={label} 
+                className={`border rounded-xl px-4 py-2 text-center min-w-[90px] ${color} shadow-sm`}
+              >
                 <p className="text-xl font-bold">{count}</p>
                 <p className="text-xs opacity-80">{label}</p>
-              </div>
+              </motion.div>
             ))}
           </div>
         </div>
 
         {/* ── Risk Alert Banner ── */}
-        {!alertDismissed && highRiskCount > 0 && (
-          <div className="flex items-start justify-between gap-4 bg-red-50 border border-red-200 rounded-2xl px-5 py-4 mb-6">
-            <div className="flex items-center gap-3">
-              <span className="text-2xl">⚠</span>
-              <div>
-                <p className="text-red-800 font-semibold text-sm">Risk Alert: Increased by 20%</p>
-                <p className="text-red-600 text-xs mt-0.5">
-                  {highRiskCount} user{highRiskCount !== 1 ? "s" : ""} flagged as high-risk. Review and take action immediately.
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={() => setAlertDismissed(true)}
-              className="text-slate-400 hover:text-slate-600 transition-colors flex-shrink-0 mt-0.5"
-              aria-label="Dismiss alert"
+        <AnimatePresence>
+          {!alertDismissed && highRiskCount > 0 && (
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="flex items-start justify-between gap-4 bg-red-50 border border-red-200 rounded-2xl px-5 py-4 mb-6"
             >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-        )}
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">⚠</span>
+                <div>
+                  <p className="text-red-800 font-semibold text-sm">Risk Alert: Increased by 20%</p>
+                  <p className="text-red-600 text-xs mt-0.5">
+                    {highRiskCount} user{highRiskCount !== 1 ? "s" : ""} flagged as high-risk. Review and take action immediately.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setAlertDismissed(true)}
+                className="text-slate-400 hover:text-slate-600 transition-colors flex-shrink-0 mt-0.5"
+                aria-label="Dismiss alert"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* ── Filters ── */}
         <div className="flex flex-col sm:flex-row gap-3 mb-5">
@@ -198,7 +228,12 @@ export default function Admin() {
         </div>
 
         {/* ── Table ── */}
-        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+        <motion.div 
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.2 }}
+          className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden"
+        >
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -246,66 +281,73 @@ export default function Admin() {
                     </td>
                   </tr>
                 ) : (
-                  filtered.map((user, idx) => (
-                    <tr
-                      key={user.id ?? idx}
-                      className="border-b border-slate-100 hover:bg-slate-50 transition-colors group bg-white"
-                    >
-                      {/* Index */}
-                      <td className="px-6 py-4 text-slate-500 tabular-nums">{idx + 1}</td>
+                  <AnimatePresence>
+                    {filtered.map((user, idx) => (
+                      <motion.tr
+                        layout
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ delay: idx * 0.05 }}
+                        key={user.id ?? idx}
+                        className="border-b border-slate-100 hover:bg-slate-50 hover:shadow-sm hover:z-10 relative transition-colors group bg-white"
+                      >
+                        {/* Index */}
+                        <td className="px-6 py-4 text-slate-500 tabular-nums">{idx + 1}</td>
 
-                      {/* Name + Email */}
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-xs flex-shrink-0">
-                            {((user.name || user.username) ?? "?")[0].toUpperCase()}
+                        {/* Name + Email */}
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-xs flex-shrink-0">
+                              {((user.name || user.username) ?? "?")[0].toUpperCase()}
+                            </div>
+                            <div>
+                              <p className="text-slate-800 font-medium leading-tight">{(user.name || user.username) ?? "—"}</p>
+                              {user.email && <p className="text-slate-500 text-xs">{user.email}</p>}
+                            </div>
                           </div>
-                          <div>
-                            <p className="text-slate-800 font-medium leading-tight">{(user.name || user.username) ?? "—"}</p>
-                            {user.email && <p className="text-slate-500 text-xs">{user.email}</p>}
+                        </td>
+
+                        {/* Trust Score */}
+                        <td className="px-6 py-4 min-w-[140px]">
+                          <TrustBar score={user.trust_score ?? 0} />
+                        </td>
+
+                        {/* Risk Level */}
+                        <td className="px-6 py-4">
+                          <RiskBadge level={user.risk_level} />
+                        </td>
+
+                        {/* Status */}
+                        <td className="px-6 py-4">
+                          <StatusPill status={user.status || (user.loan_status ? "active" : "inactive")} />
+                        </td>
+
+                        {/* Actions */}
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button
+                              title="View user"
+                              className="w-8 h-8 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-600 flex items-center justify-center transition hover:scale-110"
+                            >
+                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                              </svg>
+                            </button>
+                            <button
+                              title="Flag user"
+                              className="w-8 h-8 rounded-lg bg-yellow-50 hover:bg-yellow-100 text-yellow-600 flex items-center justify-center transition hover:scale-110"
+                            >
+                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M3 21V4m0 0l9-2 9 2v13l-9 2-9-2" />
+                              </svg>
+                            </button>
                           </div>
-                        </div>
-                      </td>
-
-                      {/* Trust Score */}
-                      <td className="px-6 py-4 min-w-[140px]">
-                        <TrustBar score={user.trust_score ?? 0} />
-                      </td>
-
-                      {/* Risk Level */}
-                      <td className="px-6 py-4">
-                        <RiskBadge level={user.risk_level} />
-                      </td>
-
-                      {/* Status */}
-                      <td className="px-6 py-4">
-                        <StatusPill status={user.status || (user.loan_status ? "active" : "inactive")} />
-                      </td>
-
-                      {/* Actions */}
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button
-                            title="View user"
-                            className="w-8 h-8 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-600 flex items-center justify-center transition"
-                          >
-                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                            </svg>
-                          </button>
-                          <button
-                            title="Flag user"
-                            className="w-8 h-8 rounded-lg bg-yellow-50 hover:bg-yellow-100 text-yellow-600 flex items-center justify-center transition"
-                          >
-                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M3 21V4m0 0l9-2 9 2v13l-9 2-9-2" />
-                            </svg>
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
+                        </td>
+                      </motion.tr>
+                    ))}
+                  </AnimatePresence>
                 )}
               </tbody>
             </table>
@@ -320,8 +362,8 @@ export default function Admin() {
               <p className="text-slate-400 text-xs">TrustLend Admin · {new Date().toLocaleDateString("en-IN")}</p>
             </div>
           )}
-        </div>
+        </motion.div>
       </div>
-    </div>
+    </motion.div>
   );
 }

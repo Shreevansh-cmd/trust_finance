@@ -1,5 +1,8 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { getUserDashboard, applyLoan, updateFinancials, simulateRiskEvent } from "../services/api";
+import { motion } from "framer-motion";
+import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
+import toast from "react-hot-toast";
 
 const TrustBadge = ({ score }) => {
   if (score >= 75) return { label: "Excellent", color: "text-emerald-600", ring: "ring-emerald-500", bg: "bg-emerald-50 border-emerald-200" };
@@ -31,23 +34,46 @@ const MetricBar = ({ label, value, max, color }) => {
         <span className="text-slate-800 font-medium">₹{value?.toLocaleString()}</span>
       </div>
       <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
-        <div
-          className={`h-full rounded-full transition-all duration-700 ${color}`}
-          style={{ width: `${pct}%` }}
+        <motion.div
+          initial={{ width: 0 }}
+          animate={{ width: `${pct}%` }}
+          transition={{ duration: 1, ease: "easeOut" }}
+          className={`h-full rounded-full ${color}`}
         />
       </div>
     </div>
   );
 };
 
-const Card = ({ children, className = "" }) => (
-  <div className={`bg-white border border-slate-200 rounded-2xl shadow-sm p-6 ${className}`}>
+const Card = ({ children, className = "", delay = 0 }) => (
+  <motion.div 
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ duration: 0.5, delay }}
+    whileHover={{ scale: 1.01 }}
+    className={`bg-white border border-slate-200 rounded-2xl shadow-sm hover:shadow-md transition-shadow p-6 ${className}`}
+  >
     {children}
-  </div>
+  </motion.div>
 );
 
 const SectionTitle = ({ children }) => (
   <h2 className="text-xs font-semibold uppercase tracking-widest text-slate-500 mb-4">{children}</h2>
+);
+
+// Skeleton loader
+const DashboardSkeleton = () => (
+  <div className="min-h-screen bg-slate-50 p-6 animate-pulse">
+    <div className="max-w-6xl mx-auto space-y-6">
+      <div className="h-20 bg-slate-200 rounded-xl w-full" />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="h-80 bg-slate-200 rounded-2xl lg:row-span-2" />
+        <div className="h-40 bg-slate-200 rounded-2xl" />
+        <div className="h-40 bg-slate-200 rounded-2xl" />
+        <div className="h-80 bg-slate-200 rounded-2xl lg:col-span-2" />
+      </div>
+    </div>
+  </div>
 );
 
 export default function Dashboard() {
@@ -56,30 +82,39 @@ export default function Dashboard() {
   const [error, setError] = useState(null);
   const userId = localStorage.getItem("userId");
 
-  const loadData = () => {
+  const loadData = useCallback(async (showToast = false) => {
     if (!userId) return;
-    setLoading(true);
-    getUserDashboard(userId)
-      .then(setData)
-      .catch(() => setError("Failed to load dashboard data."))
-      .finally(() => setLoading(false));
-  };
+    try {
+      const res = await getUserDashboard(userId);
+      setData(res);
+      if (showToast) toast.success("Dashboard refreshed", { id: "refresh" });
+    } catch (err) {
+      setError("Failed to load dashboard data.");
+    } finally {
+      setLoading(false);
+    }
+  }, [userId]);
 
   useEffect(() => {
     loadData();
-  }, [userId]);
+    // Auto refresh every 15 seconds
+    const interval = setInterval(() => loadData(), 15000);
+    return () => clearInterval(interval);
+  }, [loadData]);
 
   const handleApplyLoan = async () => {
+    const tId = toast.loading("Processing loan application...");
     try {
       await applyLoan(userId, 5000, "Personal Expense");
-      loadData();
-      alert("Loan application submitted!");
+      await loadData();
+      toast.success("Loan application submitted successfully!", { id: tId });
     } catch (err) {
-      alert("Failed to apply for loan: " + (err.response?.data?.detail || "Unknown error"));
+      toast.error(err.response?.data?.detail || "Failed to apply for loan", { id: tId });
     }
   };
 
   const handleSimulateBehavior = async () => {
+    const tId = toast.loading("Simulating high risk behavior...");
     try {
       const prevData = {
         income: data.financial_summary.income,
@@ -98,26 +133,16 @@ export default function Dashboard() {
       });
 
       const riskRes = await simulateRiskEvent(userId, prevData, currData);
-      alert(`Risk Alert Level: ${riskRes.risk_level}\n` + riskRes.message.join(", "));
-      
-      loadData();
+      await loadData();
+      toast.error(`Risk Alert Level: ${riskRes.risk_level.toUpperCase()}\n${riskRes.message[0]}`, { id: tId, duration: 4000 });
     } catch (err) {
-      alert("Failed to simulate behavior");
+      toast.error("Failed to simulate behavior", { id: tId });
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-          <p className="text-slate-500 text-sm">Loading your dashboard…</p>
-        </div>
-      </div>
-    );
-  }
+  if (loading && !data) return <DashboardSkeleton />;
 
-  if (error) {
+  if (error && !data) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="bg-red-50 border border-red-200 rounded-2xl p-8 text-center max-w-md">
@@ -136,9 +161,14 @@ export default function Dashboard() {
   const spending = data?.financial_summary?.spending ?? 0;
   const savings = data?.financial_summary?.savings ?? 0;
   const maxRef = Math.max(income, 1);
+  const history = data?.history || [];
 
   return (
-    <div className="min-h-full">
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="min-h-full"
+    >
       <div className="max-w-6xl mx-auto py-6">
         {/* Header */}
         <div className="mb-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -158,14 +188,20 @@ export default function Dashboard() {
           </div>
           <div className="flex gap-3">
             <button 
+              onClick={() => loadData(true)}
+              className="px-4 py-2 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl transition-all duration-200 font-medium text-sm shadow-sm"
+            >
+              ↻
+            </button>
+            <button 
               onClick={handleSimulateBehavior}
-              className="px-4 py-2 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl transition-colors font-medium text-sm shadow-sm"
+              className="px-4 py-2 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-red-600 rounded-xl transition-all duration-200 font-medium text-sm shadow-sm"
             >
               Simulate Bad Behavior
             </button>
             <button 
               onClick={handleApplyLoan}
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition-colors font-medium text-sm shadow-sm"
+              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition-all duration-200 font-medium text-sm shadow-sm hover:scale-105"
             >
               Apply for Loan
             </button>
@@ -174,12 +210,21 @@ export default function Dashboard() {
 
         {/* Main Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          
           {/* ── Trust Score ── */}
-          <Card className={`lg:row-span-2 ${badge.bg} flex flex-col items-center justify-center text-center gap-6`}>
+          <Card delay={0.1} className={`lg:row-span-2 ${badge.bg} flex flex-col items-center justify-center text-center gap-6 bg-gradient-to-br from-white to-transparent`}>
             <SectionTitle>Trust Score</SectionTitle>
-            <div className={`relative flex items-center justify-center w-44 h-44 rounded-full ring-4 ${badge.ring} ring-offset-4 ring-offset-white bg-white`}>
+            <div className={`relative flex items-center justify-center w-48 h-48 rounded-full ring-4 ${badge.ring} ring-offset-4 ring-offset-white bg-white shadow-inner`}>
               <div>
-                <p className={`text-6xl font-extrabold ${badge.color}`}>{score}</p>
+                <motion.p 
+                  key={score}
+                  initial={{ scale: 0.5, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ type: "spring", stiffness: 200 }}
+                  className={`text-7xl font-extrabold ${badge.color}`}
+                >
+                  {score}
+                </motion.p>
                 <p className="text-slate-500 text-xs mt-1">out of 100</p>
               </div>
             </div>
@@ -194,16 +239,26 @@ export default function Dashboard() {
               </p>
             </div>
 
-            <div className="w-full bg-slate-200 rounded-full h-2.5">
-              <div
-                className={`h-2.5 rounded-full transition-all duration-1000 ${score >= 75 ? "bg-emerald-500" : score >= 50 ? "bg-yellow-500" : "bg-red-500"}`}
-                style={{ width: `${score}%` }}
-              />
-            </div>
+            {/* Score trend mini chart */}
+            {history.length > 0 && (
+              <div className="w-full h-20 mt-4">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={history}>
+                    <defs>
+                      <linearGradient id="colorScore" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor={score >= 75 ? "#10b981" : score >= 50 ? "#eab308" : "#ef4444"} stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor={score >= 75 ? "#10b981" : score >= 50 ? "#eab308" : "#ef4444"} stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <Area type="monotone" dataKey="trust_score" stroke={score >= 75 ? "#10b981" : score >= 50 ? "#eab308" : "#ef4444"} fillOpacity={1} fill="url(#colorScore)" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            )}
           </Card>
 
           {/* ── Loan Status ── */}
-          <Card>
+          <Card delay={0.2}>
             <SectionTitle>Loan Status</SectionTitle>
             <div className="flex items-start justify-between">
               <div>
@@ -217,7 +272,7 @@ export default function Dashboard() {
               <StatusPill status={data?.loan_status?.status} />
             </div>
             {data?.loan_status?.due_date && (
-              <div className="mt-4 flex items-center gap-2 text-xs text-slate-500 bg-slate-50 p-2 rounded-lg">
+              <div className="mt-4 flex items-center gap-2 text-xs text-slate-500 bg-slate-50 p-2 rounded-lg border border-slate-100">
                 <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
@@ -227,7 +282,7 @@ export default function Dashboard() {
           </Card>
 
           {/* ── Loan Limit ── */}
-          <Card>
+          <Card delay={0.3}>
             <SectionTitle>Loan Limit</SectionTitle>
             <p className="text-3xl font-extrabold text-indigo-600">
               ₹{Number(data?.loan_limit ?? 0).toLocaleString()}
@@ -239,76 +294,111 @@ export default function Dashboard() {
                 <span>{data?.loan_status?.amount ? Math.round((data.loan_status.amount / data.loan_limit) * 100) : 0}%</span>
               </div>
               <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-indigo-500 rounded-full transition-all duration-700"
-                  style={{
-                    width: data?.loan_status?.amount && data?.loan_limit
-                      ? `${Math.min(100, Math.round((data.loan_status.amount / data.loan_limit) * 100))}%`
-                      : "0%",
-                  }}
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: data?.loan_status?.amount && data?.loan_limit ? `${Math.min(100, Math.round((data.loan_status.amount / data.loan_limit) * 100))}%` : "0%" }}
+                  transition={{ duration: 1 }}
+                  className="h-full bg-indigo-500 rounded-full"
                 />
               </div>
             </div>
           </Card>
 
           {/* ── Financial Summary ── */}
-          <Card className="lg:col-span-2">
-            <SectionTitle>Financial Summary</SectionTitle>
+          <Card delay={0.4} className="lg:col-span-2">
+            <div className="flex items-center justify-between mb-4">
+              <SectionTitle>Financial Summary</SectionTitle>
+            </div>
+            
             <div className="grid grid-cols-3 gap-4 mb-8">
               {[
                 { label: "Income", value: income, color: "text-emerald-600", bg: "bg-emerald-50", icon: "↑" },
                 { label: "Spending", value: spending, color: "text-red-600", bg: "bg-red-50", icon: "↓" },
                 { label: "Savings", value: savings, color: "text-indigo-600", bg: "bg-indigo-50", icon: "◈" },
               ].map(({ label, value, color, bg, icon }) => (
-                <div key={label} className={`${bg} rounded-xl p-4 text-center border border-slate-100`}>
+                <div key={label} className={`${bg} rounded-xl p-4 text-center border border-slate-100 transition-transform hover:scale-105`}>
                   <p className={`text-xl font-bold ${color}`}>{icon}</p>
                   <p className="text-lg font-semibold text-slate-800 mt-1">₹{value.toLocaleString()}</p>
                   <p className="text-slate-500 text-xs mt-0.5">{label}</p>
                 </div>
               ))}
             </div>
-            <div className="space-y-5">
-              <MetricBar label="Income vs Max" value={income} max={maxRef} color="bg-emerald-500" />
-              <MetricBar label="Spending vs Max" value={spending} max={maxRef} color="bg-red-500" />
-              <MetricBar label="Savings vs Max" value={savings} max={maxRef} color="bg-indigo-500" />
-            </div>
+
+            {/* Financial Chart */}
+            {history.length > 0 && (
+              <div className="h-64 mt-4">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={history} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                    <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} dy={10} />
+                    <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} dx={-10} tickFormatter={(val) => `₹${val/1000}k`} />
+                    <Tooltip 
+                      contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                      formatter={(value) => [`₹${value.toLocaleString()}`, undefined]}
+                    />
+                    <Legend iconType="circle" wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
+                    <Line type="monotone" dataKey="income" stroke="#059669" strokeWidth={3} dot={{r: 4, strokeWidth: 2}} activeDot={{r: 6}} />
+                    <Line type="monotone" dataKey="spending" stroke="#dc2626" strokeWidth={3} dot={{r: 4, strokeWidth: 2}} activeDot={{r: 6}} />
+                    <Line type="monotone" dataKey="savings" stroke="#4f46e5" strokeWidth={3} dot={{r: 4, strokeWidth: 2}} activeDot={{r: 6}} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            )}
           </Card>
         </div>
 
         {/* ── Explanation Section ── */}
-        {(reasons.length > 0 || suggestions.length > 0) && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-            {reasons.length > 0 && (
-              <Card>
-                <SectionTitle>Why Your Score Is This</SectionTitle>
-                <ul className="space-y-3">
-                  {reasons.map((r, i) => (
-                    <li key={i} className="flex items-start gap-3 bg-slate-50 p-3 rounded-lg">
-                      <span className="flex-shrink-0 w-5 h-5 rounded-full bg-yellow-100 text-yellow-600 flex items-center justify-center text-xs font-bold">!</span>
-                      <span className="text-slate-700 text-sm leading-relaxed">{r}</span>
-                    </li>
-                  ))}
-                </ul>
-              </Card>
-            )}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+        >
+          {(reasons.length > 0 || suggestions.length > 0) && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+              {reasons.length > 0 && (
+                <Card>
+                  <SectionTitle>Why Your Score Is This</SectionTitle>
+                  <ul className="space-y-3">
+                    {reasons.map((r, i) => (
+                      <motion.li 
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.6 + i*0.1 }}
+                        key={i} 
+                        className="flex items-start gap-3 bg-slate-50 p-3 rounded-lg border border-slate-100"
+                      >
+                        <span className="flex-shrink-0 w-5 h-5 rounded-full bg-yellow-100 text-yellow-600 flex items-center justify-center text-xs font-bold">!</span>
+                        <span className="text-slate-700 text-sm leading-relaxed">{r}</span>
+                      </motion.li>
+                    ))}
+                  </ul>
+                </Card>
+              )}
 
-            {suggestions.length > 0 && (
-              <Card>
-                <SectionTitle>Suggestions to Improve</SectionTitle>
-                <ul className="space-y-3">
-                  {suggestions.map((s, i) => (
-                    <li key={i} className="flex items-start gap-3 bg-slate-50 p-3 rounded-lg">
-                      <span className="flex-shrink-0 w-5 h-5 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-xs font-bold">✓</span>
-                      <span className="text-slate-700 text-sm leading-relaxed">{s}</span>
-                    </li>
-                  ))}
-                </ul>
-              </Card>
-            )}
-          </div>
-        )}
+              {suggestions.length > 0 && (
+                <Card>
+                  <SectionTitle>Suggestions to Improve</SectionTitle>
+                  <ul className="space-y-3">
+                    {suggestions.map((s, i) => (
+                      <motion.li 
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.7 + i*0.1 }}
+                        key={i} 
+                        className="flex items-start gap-3 bg-slate-50 p-3 rounded-lg border border-slate-100"
+                      >
+                        <span className="flex-shrink-0 w-5 h-5 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-xs font-bold">✓</span>
+                        <span className="text-slate-700 text-sm leading-relaxed">{s}</span>
+                      </motion.li>
+                    ))}
+                  </ul>
+                </Card>
+              )}
+            </div>
+          )}
+        </motion.div>
 
       </div>
-    </div>
+    </motion.div>
   );
 }

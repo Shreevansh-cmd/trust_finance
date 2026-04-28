@@ -4,6 +4,7 @@ import Admin from './pages/Admin';
 import Login from './pages/Login';
 import { LayoutDashboard, Shield, Bell, Search, UserCircle, Settings, LogOut } from 'lucide-react';
 import clsx from 'clsx';
+import { Toaster } from 'react-hot-toast';
 
 function Sidebar() {
   const location = useLocation();
@@ -117,27 +118,30 @@ const ProtectedRoute = ({ children, allowedRole }) => {
 
 function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route 
-          path="/" 
-          element={
-            <ProtectedRoute allowedRole="user">
-              <Dashboard />
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/admin" 
-          element={
-            <ProtectedRoute allowedRole="admin">
-              <Admin />
-            </ProtectedRoute>
-          } 
-        />
-      </Routes>
-    </BrowserRouter>
+    <>
+      <Toaster position="top-right" />
+      <BrowserRouter>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route 
+            path="/" 
+            element={
+              <ProtectedRoute allowedRole="user">
+                <Dashboard />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/admin" 
+            element={
+              <ProtectedRoute allowedRole="admin">
+                <Admin />
+              </ProtectedRoute>
+            } 
+          />
+        </Routes>
+      </BrowserRouter>
+    </>
   );
 }
 
