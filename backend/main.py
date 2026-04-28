@@ -7,7 +7,6 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from database.db import init_db
 from routes import user, loan, risk, admin
 
 app = FastAPI(title="Dynamic Trust-Based Loan Ecosystem")
@@ -29,7 +28,7 @@ app.include_router(admin.router, prefix="/api", tags=["Admin"])
 
 @app.on_event("startup")
 def startup_event():
-    init_db()
+    pass
 
 @app.get("/")
 def read_root():

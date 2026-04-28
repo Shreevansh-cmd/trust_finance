@@ -1,25 +1,22 @@
-from fastapi import APIRouter
-from pydantic import BaseModel
-from database.db import get_db
+from fastapi import APIRouter, HTTPException
+from store import users
 from services.risk_detection import detect_risk_change
-from services.scoring import calculate_trust_score
 
 router = APIRouter()
 
-class RiskData(BaseModel):
-    user_id: int
-    prev_data: dict
-    curr_data: dict
-
-@router.post("/risk-alert")
-def check_risk_alert(data: RiskData):
-    risk_info = detect_risk_change(data.prev_data, data.curr_data)
+@router.get("/risk-alert/{user_id}")
+def check_risk_alert(user_id: int, prev_income: int, prev_spending: int, curr_income: int, curr_spending: int):
+    risk_info = detect_risk_change(
+        {"income": prev_income, "spending": prev_spending},
+        {"income": curr_income, "spending": curr_spending}
+    )
     
-    with get_db() as conn:
-        cursor = conn.cursor()
-        cursor.execute("UPDATE users SET risk_level = ? WHERE id = ?", (risk_info["level"], data.user_id))
+    user = next((u for u in users if u["id"] == user_id), None)
+    if user:
+        user["risk_level"] = risk_info["level"]
         
-        # update the actual score too? For now just risk level
-        conn.commit()
-        
-    return risk_info
+    return {
+        "risk_change": risk_info["risk_percent"],
+        "risk_level": risk_info["level"],
+        "message": risk_info["alerts"]
+    }

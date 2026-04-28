@@ -9,11 +9,19 @@ const api = axios.create({
   },
 });
 
-export const login = (username) => api.post('/login', { username });
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+export const login = (email, password, role) => api.post('/login', { email, password, role }).then(r => r.data);
 
 export const getDashboard = (userId) => api.get(`/dashboard/${userId}`);
 
-export const applyLoan = (userId) => api.post('/apply-loan', { user_id: userId });
+export const applyLoan = (userId, amount, purpose) => api.post(`/apply-loan/${userId}`, { amount, purpose });
 
 export const updateFinancials = (userId, data) => api.post(`/update-financials/${userId}`, data);
 
@@ -24,6 +32,13 @@ export const getUserDashboard = (userId) => getDashboard(userId).then(r => r.dat
 export const getAllUsers = () => getAdminUsers().then(r => r.data.users);
 
 export const simulateRiskEvent = (userId, prevData, currData) => 
-  api.post('/risk-alert', { user_id: userId, prev_data: prevData, curr_data: currData });
+  api.get(`/risk-alert/${userId}`, { 
+    params: {
+      prev_income: prevData.income,
+      prev_spending: prevData.spending,
+      curr_income: currData.income,
+      curr_spending: currData.spending
+    }
+  }).then(r => r.data);
 
 export default api;

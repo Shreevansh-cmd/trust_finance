@@ -84,8 +84,8 @@ export default function Admin() {
   };
 
   const SortIcon = ({ col }) => {
-    if (sortConfig.key !== col) return <span className="text-slate-600 ml-1">↕</span>;
-    return <span className="text-indigo-400 ml-1">{sortConfig.dir === "asc" ? "↑" : "↓"}</span>;
+    if (sortConfig.key !== col) return <span className="text-slate-400 ml-1">↕</span>;
+    return <span className="text-indigo-600 ml-1">{sortConfig.dir === "asc" ? "↑" : "↓"}</span>;
   };
 
   const filtered = users
@@ -112,28 +112,22 @@ export default function Admin() {
   const highRiskCount = users.filter((u) => (u.risk_level ?? "").toLowerCase() === "high").length;
 
   return (
-    <div className="min-h-screen bg-slate-900 text-white">
-      {/* Ambient glow */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute -top-32 -right-32 w-96 h-96 bg-indigo-600/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 -left-32 w-96 h-96 bg-purple-600/8 rounded-full blur-3xl" />
-      </div>
-
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+    <div className="min-h-full">
+      <div className="relative max-w-7xl mx-auto py-6">
 
         {/* ── Header ── */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <div className="w-8 h-8 bg-indigo-500/20 rounded-lg flex items-center justify-center">
-                <svg className="w-4 h-4 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <div className="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center">
+                <svg className="w-4 h-4 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                 </svg>
               </div>
-              <span className="text-indigo-400 text-sm font-medium">TrustLend · Admin</span>
+              <span className="text-indigo-600 text-sm font-medium">TrustLend · Admin</span>
             </div>
-            <h1 className="text-3xl font-bold tracking-tight">User Management</h1>
-            <p className="text-slate-400 text-sm mt-0.5">
+            <h1 className="text-3xl font-bold tracking-tight text-slate-800">User Management</h1>
+            <p className="text-slate-500 text-sm mt-0.5">
               {users.length} total users · {highRiskCount} flagged high-risk
             </p>
           </div>
@@ -141,9 +135,9 @@ export default function Admin() {
           {/* Stats chips */}
           <div className="flex gap-3 flex-wrap">
             {[
-              { label: "Low Risk", count: users.filter(u => (u.risk_level ?? "low").toLowerCase() === "low").length, color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20" },
-              { label: "Medium Risk", count: users.filter(u => (u.risk_level ?? "").toLowerCase() === "medium").length, color: "text-yellow-400 bg-yellow-500/10 border-yellow-500/20" },
-              { label: "High Risk", count: highRiskCount, color: "text-red-400 bg-red-500/10 border-red-500/20" },
+              { label: "Low Risk", count: users.filter(u => (u.risk_level ?? "low").toLowerCase() === "low").length, color: "text-emerald-700 bg-emerald-50 border-emerald-200" },
+              { label: "Medium Risk", count: users.filter(u => (u.risk_level ?? "").toLowerCase() === "medium").length, color: "text-yellow-700 bg-yellow-50 border-yellow-200" },
+              { label: "High Risk", count: highRiskCount, color: "text-red-700 bg-red-50 border-red-200" },
             ].map(({ label, count, color }) => (
               <div key={label} className={`border rounded-xl px-4 py-2 text-center min-w-[90px] ${color}`}>
                 <p className="text-xl font-bold">{count}</p>
@@ -155,19 +149,19 @@ export default function Admin() {
 
         {/* ── Risk Alert Banner ── */}
         {!alertDismissed && highRiskCount > 0 && (
-          <div className="flex items-start justify-between gap-4 bg-red-500/10 border border-red-500/30 rounded-2xl px-5 py-4 mb-6 animate-pulse-once">
+          <div className="flex items-start justify-between gap-4 bg-red-50 border border-red-200 rounded-2xl px-5 py-4 mb-6">
             <div className="flex items-center gap-3">
               <span className="text-2xl">⚠</span>
               <div>
-                <p className="text-red-300 font-semibold text-sm">Risk Alert: Increased by 20%</p>
-                <p className="text-slate-400 text-xs mt-0.5">
+                <p className="text-red-800 font-semibold text-sm">Risk Alert: Increased by 20%</p>
+                <p className="text-red-600 text-xs mt-0.5">
                   {highRiskCount} user{highRiskCount !== 1 ? "s" : ""} flagged as high-risk. Review and take action immediately.
                 </p>
               </div>
             </div>
             <button
               onClick={() => setAlertDismissed(true)}
-              className="text-slate-500 hover:text-slate-300 transition-colors flex-shrink-0 mt-0.5"
+              className="text-slate-400 hover:text-slate-600 transition-colors flex-shrink-0 mt-0.5"
               aria-label="Dismiss alert"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -180,7 +174,7 @@ export default function Admin() {
         {/* ── Filters ── */}
         <div className="flex flex-col sm:flex-row gap-3 mb-5">
           <div className="relative flex-1">
-            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 104.5 4.5a7.5 7.5 0 0012.15 12.15z" />
             </svg>
             <input
@@ -188,13 +182,13 @@ export default function Admin() {
               placeholder="Search by name or email…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full bg-slate-800/60 border border-slate-700/60 rounded-xl pl-9 pr-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition"
+              className="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-4 py-2.5 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition shadow-sm"
             />
           </div>
           <select
             value={riskFilter}
             onChange={(e) => setRiskFilter(e.target.value)}
-            className="bg-slate-800/60 border border-slate-700/60 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition"
+            className="bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition shadow-sm"
           >
             <option value="all">All Risk Levels</option>
             <option value="low">Low Risk</option>
@@ -204,11 +198,11 @@ export default function Admin() {
         </div>
 
         {/* ── Table ── */}
-        <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700/50 rounded-2xl shadow-2xl overflow-hidden">
+        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-slate-700/60 bg-slate-800/80">
+                <tr className="border-b border-slate-200 bg-slate-50">
                   {[
                     { label: "#", key: null },
                     { label: "Name", key: "name" },
@@ -220,7 +214,7 @@ export default function Admin() {
                     <th
                       key={label}
                       onClick={() => key && handleSort(key)}
-                      className={`px-6 py-4 text-left text-xs font-semibold uppercase tracking-widest text-slate-400 select-none ${key ? "cursor-pointer hover:text-white transition-colors" : ""}`}
+                      className={`px-6 py-4 text-left text-xs font-semibold uppercase tracking-widest text-slate-500 select-none ${key ? "cursor-pointer hover:text-slate-800 transition-colors" : ""}`}
                     >
                       {label}
                       {key && <SortIcon col={key} />}
@@ -236,7 +230,7 @@ export default function Admin() {
                     <td colSpan={6} className="px-6 py-16 text-center">
                       <div className="flex flex-col items-center gap-2">
                         <span className="text-3xl">⚡</span>
-                        <p className="text-red-400 font-semibold">{error}</p>
+                        <p className="text-red-600 font-semibold">{error}</p>
                         <p className="text-slate-500 text-xs">Check your backend connection and try again.</p>
                       </div>
                     </td>
@@ -246,8 +240,8 @@ export default function Admin() {
                     <td colSpan={6} className="px-6 py-16 text-center">
                       <div className="flex flex-col items-center gap-2">
                         <span className="text-3xl">🔍</span>
-                        <p className="text-slate-400 font-medium">No users match your filters.</p>
-                        <button onClick={() => { setSearch(""); setRiskFilter("all"); }} className="text-indigo-400 text-xs hover:underline mt-1">Clear filters</button>
+                        <p className="text-slate-500 font-medium">No users match your filters.</p>
+                        <button onClick={() => { setSearch(""); setRiskFilter("all"); }} className="text-indigo-600 text-xs hover:underline mt-1">Clear filters</button>
                       </div>
                     </td>
                   </tr>
@@ -255,7 +249,7 @@ export default function Admin() {
                   filtered.map((user, idx) => (
                     <tr
                       key={user.id ?? idx}
-                      className="border-b border-slate-700/40 hover:bg-slate-700/30 transition-colors group"
+                      className="border-b border-slate-100 hover:bg-slate-50 transition-colors group bg-white"
                     >
                       {/* Index */}
                       <td className="px-6 py-4 text-slate-500 tabular-nums">{idx + 1}</td>
@@ -263,11 +257,11 @@ export default function Admin() {
                       {/* Name + Email */}
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-indigo-500/20 flex items-center justify-center text-indigo-300 font-bold text-xs flex-shrink-0">
+                          <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-xs flex-shrink-0">
                             {((user.name || user.username) ?? "?")[0].toUpperCase()}
                           </div>
                           <div>
-                            <p className="text-white font-medium leading-tight">{(user.name || user.username) ?? "—"}</p>
+                            <p className="text-slate-800 font-medium leading-tight">{(user.name || user.username) ?? "—"}</p>
                             {user.email && <p className="text-slate-500 text-xs">{user.email}</p>}
                           </div>
                         </div>
@@ -285,7 +279,7 @@ export default function Admin() {
 
                       {/* Status */}
                       <td className="px-6 py-4">
-                        <StatusPill status={user.status} />
+                        <StatusPill status={user.status || (user.loan_status ? "active" : "inactive")} />
                       </td>
 
                       {/* Actions */}
@@ -293,7 +287,7 @@ export default function Admin() {
                         <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                           <button
                             title="View user"
-                            className="w-8 h-8 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/25 text-indigo-400 flex items-center justify-center transition"
+                            className="w-8 h-8 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-600 flex items-center justify-center transition"
                           >
                             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                               <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -302,7 +296,7 @@ export default function Admin() {
                           </button>
                           <button
                             title="Flag user"
-                            className="w-8 h-8 rounded-lg bg-yellow-500/10 hover:bg-yellow-500/25 text-yellow-400 flex items-center justify-center transition"
+                            className="w-8 h-8 rounded-lg bg-yellow-50 hover:bg-yellow-100 text-yellow-600 flex items-center justify-center transition"
                           >
                             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                               <path strokeLinecap="round" strokeLinejoin="round" d="M3 21V4m0 0l9-2 9 2v13l-9 2-9-2" />
@@ -319,11 +313,11 @@ export default function Admin() {
 
           {/* Table Footer */}
           {!loading && !error && filtered.length > 0 && (
-            <div className="px-6 py-3 border-t border-slate-700/40 flex items-center justify-between">
+            <div className="px-6 py-3 border-t border-slate-100 flex items-center justify-between bg-slate-50">
               <p className="text-slate-500 text-xs">
-                Showing <span className="text-slate-300">{filtered.length}</span> of <span className="text-slate-300">{users.length}</span> users
+                Showing <span className="text-slate-700 font-medium">{filtered.length}</span> of <span className="text-slate-700 font-medium">{users.length}</span> users
               </p>
-              <p className="text-slate-600 text-xs">TrustLend Admin · {new Date().toLocaleDateString("en-IN")}</p>
+              <p className="text-slate-400 text-xs">TrustLend Admin · {new Date().toLocaleDateString("en-IN")}</p>
             </div>
           )}
         </div>
