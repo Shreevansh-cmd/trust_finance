@@ -3,6 +3,7 @@ import { getUserDashboard, applyLoan, updateFinancials, simulateRiskEvent, reset
 import { motion, AnimatePresence } from "framer-motion";
 import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import toast from "react-hot-toast";
+import Chatbot from "../components/Chatbot";
 
 const TrustBadge = ({ score }) => {
   if (score >= 75) return { label: "Excellent", color: "text-emerald-600", ring: "ring-emerald-500", bg: "bg-emerald-50 border-emerald-200" };
@@ -484,6 +485,15 @@ export default function Dashboard() {
         </motion.div>
 
       </div>
+
+      {/* AI Chatbot – floats bottom-right, receives live user data */}
+      <Chatbot userData={{
+        trust_score: data?.trust_score,
+        income: data?.financial_summary?.income,
+        spending: data?.financial_summary?.spending,
+        savings: data?.financial_summary?.savings,
+        risk_level: data?.risk_level
+      }} />
     </motion.div>
   );
 }

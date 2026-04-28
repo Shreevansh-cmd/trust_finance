@@ -7,7 +7,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routes import user, loan, risk, admin
+from routes import user, loan, risk, admin, chat
 
 app = FastAPI(title="Dynamic Trust-Based Loan Ecosystem")
 
@@ -25,6 +25,7 @@ app.include_router(user.router, prefix="/api", tags=["User"])
 app.include_router(loan.router, prefix="/api", tags=["Loan"])
 app.include_router(risk.router, prefix="/api", tags=["Risk"])
 app.include_router(admin.router, prefix="/api", tags=["Admin"])
+app.include_router(chat.router, prefix="/api", tags=["Chat"])
 
 @app.on_event("startup")
 def startup_event():

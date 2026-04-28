@@ -36,4 +36,7 @@ export const getAllUsers = () => getAdminUsers().then(r => r.data.users);
 export const simulateRiskEvent = (userId) => 
   api.get(`/risk-alert/${userId}`).then(r => r.data);
 
+export const sendMessage = (message, userData) => 
+  api.post('/chat', { message, user_data: userData }).then(r => r.data);
+
 export default api;
