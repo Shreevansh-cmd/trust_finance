@@ -25,20 +25,15 @@ export const applyLoan = (userId, amount, purpose) => api.post(`/apply-loan/${us
 
 export const updateFinancials = (userId, data) => api.post(`/update-financials/${userId}`, data);
 
+export const resetFinancials = (userId) => api.post(`/reset-financials/${userId}`);
+
 export const getAdminUsers = () => api.get('/admin/users');
 
 // Aliases used by Dashboard.jsx and Admin.jsx
 export const getUserDashboard = (userId) => getDashboard(userId).then(r => r.data);
 export const getAllUsers = () => getAdminUsers().then(r => r.data.users);
 
-export const simulateRiskEvent = (userId, prevData, currData) => 
-  api.get(`/risk-alert/${userId}`, { 
-    params: {
-      prev_income: prevData.income,
-      prev_spending: prevData.spending,
-      curr_income: currData.income,
-      curr_spending: currData.spending
-    }
-  }).then(r => r.data);
+export const simulateRiskEvent = (userId) => 
+  api.get(`/risk-alert/${userId}`).then(r => r.data);
 
 export default api;

@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { getUserDashboard, applyLoan, updateFinancials, simulateRiskEvent } from "../services/api";
-import { motion } from "framer-motion";
+import { getUserDashboard, applyLoan, updateFinancials, simulateRiskEvent, resetFinancials } from "../services/api";
+import { motion, AnimatePresence } from "framer-motion";
 import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import toast from "react-hot-toast";
 
@@ -46,7 +46,7 @@ const MetricBar = ({ label, value, max, color }) => {
 };
 
 const Card = ({ children, className = "", delay = 0 }) => (
-  <motion.div 
+  <motion.div
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
     transition={{ duration: 0.5, delay }}
@@ -79,21 +79,41 @@ const DashboardSkeleton = () => (
 export default function Dashboard() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState(null);
   const userId = localStorage.getItem("userId");
 
-  const loadData = useCallback(async (showToast = false) => {
+  const loadData = useCallback(async () => {
     if (!userId) return;
     try {
       const res = await getUserDashboard(userId);
       setData(res);
-      if (showToast) toast.success("Dashboard refreshed", { id: "refresh" });
+      console.log("API response:", res);
+      console.log("Trust Score:", res.trust_score);
+      console.log("Fraud Severity:", res.fraud?.severity);
     } catch (err) {
       setError("Failed to load dashboard data.");
     } finally {
       setLoading(false);
     }
   }, [userId]);
+
+  const handleReload = async () => {
+    if (!userId) return;
+    setIsRefreshing(true);
+    setLoading(true);
+    try {
+      const res = await getUserDashboard(userId);
+      setData(res);
+      console.log("New dashboard data:", res);
+      toast.success("Dashboard refreshed", { id: "refresh" });
+    } catch (err) {
+      setError("Failed to load dashboard data.");
+    } finally {
+      setLoading(false);
+      setIsRefreshing(false);
+    }
+  };
 
   useEffect(() => {
     loadData();
@@ -120,7 +140,7 @@ export default function Dashboard() {
         income: data.financial_summary.income,
         spending: data.financial_summary.spending
       };
-      
+
       const currData = {
         income: data.financial_summary.income,
         spending: data.financial_summary.spending + 15000 // simulate spike
@@ -132,11 +152,26 @@ export default function Dashboard() {
         savings: data.financial_summary.savings - 5000
       });
 
-      const riskRes = await simulateRiskEvent(userId, prevData, currData);
+      const riskRes = await simulateRiskEvent(userId);
       await loadData();
-      toast.error(`Risk Alert Level: ${riskRes.risk_level.toUpperCase()}\n${riskRes.message[0]}`, { id: tId, duration: 4000 });
+      if (riskRes.fraud?.detected) {
+        toast.error(`⚠ Suspicious activity detected: ${riskRes.fraud.reason}`, { id: tId, duration: 4000 });
+      } else {
+        toast.error(`Risk Alert Level: ${riskRes.risk_level.toUpperCase()}\n${riskRes.message}`, { id: tId, duration: 4000 });
+      }
     } catch (err) {
       toast.error("Failed to simulate behavior", { id: tId });
+    }
+  };
+
+  const handleReset = async () => {
+    const tId = toast.loading("Resetting data...");
+    try {
+      await resetFinancials(userId);
+      await handleReload();
+      toast.success("Data reset to normal", { id: tId });
+    } catch (err) {
+      toast.error("Failed to reset data", { id: tId });
     }
   };
 
@@ -164,7 +199,7 @@ export default function Dashboard() {
   const history = data?.history || [];
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       className="min-h-full"
@@ -187,19 +222,29 @@ export default function Dashboard() {
             </p>
           </div>
           <div className="flex gap-3">
-            <button 
-              onClick={() => loadData(true)}
-              className="px-4 py-2 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl transition-all duration-200 font-medium text-sm shadow-sm"
+            <button
+              onClick={handleReload}
+              disabled={isRefreshing}
+              className="w-9 h-9 flex items-center justify-center bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl transition-all duration-200 shadow-sm disabled:opacity-50"
+              title="Refresh Dashboard"
             >
-              ↻
+              <svg className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-indigo-600' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
             </button>
-            <button 
+            <button
               onClick={handleSimulateBehavior}
               className="px-4 py-2 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-red-600 rounded-xl transition-all duration-200 font-medium text-sm shadow-sm"
             >
               Simulate Bad Behavior
             </button>
-            <button 
+            <button
+              onClick={handleReset}
+              className="px-4 py-2 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-emerald-600 rounded-xl transition-all duration-200 font-medium text-sm shadow-sm"
+            >
+              Reset Data
+            </button>
+            <button
               onClick={handleApplyLoan}
               className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition-all duration-200 font-medium text-sm shadow-sm hover:scale-105"
             >
@@ -210,13 +255,57 @@ export default function Dashboard() {
 
         {/* Main Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          
+
+          {/* ── Fraud Alert Banner ── */}
+          <AnimatePresence>
+            {data?.fraud?.detected && (
+              <motion.div
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="col-span-1 lg:col-span-3 bg-red-50 border border-red-200 rounded-2xl p-5 shadow-sm"
+              >
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+                    <span className="text-red-600 text-xl font-bold">⚠</span>
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
+                      <h3 className="text-red-800 font-bold text-lg leading-tight">Suspicious Activity Detected</h3>
+                      <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide
+                        ${data.fraud.severity === "High" ? "bg-red-200 text-red-800" :
+                          data.fraud.severity === "Medium" ? "bg-yellow-200 text-yellow-800" : "bg-blue-100 text-blue-800"}
+                      `}>
+                        {data.fraud.severity} Severity
+                      </span>
+                    </div>
+
+                    <div className="space-y-1.5 mb-3">
+                      <p className="text-sm">
+                        <span className="font-semibold text-red-700">Type:</span> <span className="text-red-900">{data.fraud.type}</span>
+                      </p>
+                      <p className="text-sm text-red-700">
+                        <span className="font-semibold">Reason:</span> {data.fraud.reason}
+                      </p>
+                    </div>
+
+                    <div className="bg-white/60 p-3 rounded-lg border border-red-100">
+                      <p className="text-sm text-red-800">
+                        <span className="font-semibold">Recommendation:</span> {data.fraud.recommendation}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           {/* ── Trust Score ── */}
           <Card delay={0.1} className={`lg:row-span-2 ${badge.bg} flex flex-col items-center justify-center text-center gap-6 bg-gradient-to-br from-white to-transparent`}>
             <SectionTitle>Trust Score</SectionTitle>
             <div className={`relative flex items-center justify-center w-48 h-48 rounded-full ring-4 ${badge.ring} ring-offset-4 ring-offset-white bg-white shadow-inner`}>
               <div>
-                <motion.p 
+                <motion.p
                   key={score}
                   initial={{ scale: 0.5, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
@@ -230,12 +319,8 @@ export default function Dashboard() {
             </div>
             <div>
               <span className={`text-xl font-semibold ${badge.color}`}>{badge.label}</span>
-              <p className="text-slate-600 text-sm mt-2 max-w-xs">
-                {score >= 75
-                  ? "You have an excellent credit profile. Keep it up!"
-                  : score >= 50
-                  ? "Your profile is in good shape with room to improve."
-                  : "Your trust score needs attention. Check suggestions below."}
+              <p className={`text-sm mt-2 max-w-xs font-medium ${badge.color}`}>
+                {data?.risk_message || "Spending is well within limits."}
               </p>
             </div>
 
@@ -246,8 +331,8 @@ export default function Dashboard() {
                   <AreaChart data={history}>
                     <defs>
                       <linearGradient id="colorScore" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor={score >= 75 ? "#10b981" : score >= 50 ? "#eab308" : "#ef4444"} stopOpacity={0.3}/>
-                        <stop offset="95%" stopColor={score >= 75 ? "#10b981" : score >= 50 ? "#eab308" : "#ef4444"} stopOpacity={0}/>
+                        <stop offset="5%" stopColor={score >= 75 ? "#10b981" : score >= 50 ? "#eab308" : "#ef4444"} stopOpacity={0.3} />
+                        <stop offset="95%" stopColor={score >= 75 ? "#10b981" : score >= 50 ? "#eab308" : "#ef4444"} stopOpacity={0} />
                       </linearGradient>
                     </defs>
                     <Area type="monotone" dataKey="trust_score" stroke={score >= 75 ? "#10b981" : score >= 50 ? "#eab308" : "#ef4444"} fillOpacity={1} fill="url(#colorScore)" />
@@ -309,7 +394,7 @@ export default function Dashboard() {
             <div className="flex items-center justify-between mb-4">
               <SectionTitle>Financial Summary</SectionTitle>
             </div>
-            
+
             <div className="grid grid-cols-3 gap-4 mb-8">
               {[
                 { label: "Income", value: income, color: "text-emerald-600", bg: "bg-emerald-50", icon: "↑" },
@@ -330,16 +415,16 @@ export default function Dashboard() {
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={history} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                    <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} dy={10} />
-                    <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} dx={-10} tickFormatter={(val) => `₹${val/1000}k`} />
-                    <Tooltip 
+                    <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} dy={10} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} dx={-10} tickFormatter={(val) => `₹${val / 1000}k`} />
+                    <Tooltip
                       contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                       formatter={(value) => [`₹${value.toLocaleString()}`, undefined]}
                     />
                     <Legend iconType="circle" wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
-                    <Line type="monotone" dataKey="income" stroke="#059669" strokeWidth={3} dot={{r: 4, strokeWidth: 2}} activeDot={{r: 6}} />
-                    <Line type="monotone" dataKey="spending" stroke="#dc2626" strokeWidth={3} dot={{r: 4, strokeWidth: 2}} activeDot={{r: 6}} />
-                    <Line type="monotone" dataKey="savings" stroke="#4f46e5" strokeWidth={3} dot={{r: 4, strokeWidth: 2}} activeDot={{r: 6}} />
+                    <Line type="monotone" dataKey="income" stroke="#059669" strokeWidth={3} dot={{ r: 4, strokeWidth: 2 }} activeDot={{ r: 6 }} />
+                    <Line type="monotone" dataKey="spending" stroke="#dc2626" strokeWidth={3} dot={{ r: 4, strokeWidth: 2 }} activeDot={{ r: 6 }} />
+                    <Line type="monotone" dataKey="savings" stroke="#4f46e5" strokeWidth={3} dot={{ r: 4, strokeWidth: 2 }} activeDot={{ r: 6 }} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
@@ -348,7 +433,7 @@ export default function Dashboard() {
         </div>
 
         {/* ── Explanation Section ── */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5 }}
@@ -360,11 +445,11 @@ export default function Dashboard() {
                   <SectionTitle>Why Your Score Is This</SectionTitle>
                   <ul className="space-y-3">
                     {reasons.map((r, i) => (
-                      <motion.li 
+                      <motion.li
                         initial={{ opacity: 0, x: -10 }}
                         animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 0.6 + i*0.1 }}
-                        key={i} 
+                        transition={{ delay: 0.6 + i * 0.1 }}
+                        key={i}
                         className="flex items-start gap-3 bg-slate-50 p-3 rounded-lg border border-slate-100"
                       >
                         <span className="flex-shrink-0 w-5 h-5 rounded-full bg-yellow-100 text-yellow-600 flex items-center justify-center text-xs font-bold">!</span>
@@ -380,11 +465,11 @@ export default function Dashboard() {
                   <SectionTitle>Suggestions to Improve</SectionTitle>
                   <ul className="space-y-3">
                     {suggestions.map((s, i) => (
-                      <motion.li 
+                      <motion.li
                         initial={{ opacity: 0, x: -10 }}
                         animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 0.7 + i*0.1 }}
-                        key={i} 
+                        transition={{ delay: 0.7 + i * 0.1 }}
+                        key={i}
                         className="flex items-start gap-3 bg-slate-50 p-3 rounded-lg border border-slate-100"
                       >
                         <span className="flex-shrink-0 w-5 h-5 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-xs font-bold">✓</span>

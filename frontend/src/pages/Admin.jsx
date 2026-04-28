@@ -244,6 +244,7 @@ export default function Admin() {
                     { label: "Trust Score", key: "trust_score" },
                     { label: "Risk Level", key: "risk_level" },
                     { label: "Status", key: "status" },
+                    { label: "Fraud Alert", key: "fraud_detected" },
                     { label: "Actions", key: null },
                   ].map(({ label, key }) => (
                     <th
@@ -290,7 +291,7 @@ export default function Admin() {
                         exit={{ opacity: 0 }}
                         transition={{ delay: idx * 0.05 }}
                         key={user.id ?? idx}
-                        className="border-b border-slate-100 hover:bg-slate-50 hover:shadow-sm hover:z-10 relative transition-colors group bg-white"
+                        className={`border-b border-slate-100 hover:shadow-sm hover:z-10 relative transition-colors group ${user.fraud?.detected ? "bg-red-50/50 hover:bg-red-50" : "bg-white hover:bg-slate-50"}`}
                       >
                         {/* Index */}
                         <td className="px-6 py-4 text-slate-500 tabular-nums">{idx + 1}</td>
@@ -321,6 +322,32 @@ export default function Admin() {
                         {/* Status */}
                         <td className="px-6 py-4">
                           <StatusPill status={user.status || (user.loan_status ? "active" : "inactive")} />
+                        </td>
+
+                        {/* Fraud Status */}
+                        <td className="px-6 py-4">
+                          {user.fraud?.detected ? (
+                            <div className={`group/fraud relative inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold uppercase tracking-wide cursor-help ${
+                              user.fraud.severity === "High" ? "bg-red-100 text-red-700 border border-red-200" :
+                              user.fraud.severity === "Medium" ? "bg-yellow-100 text-yellow-700 border border-yellow-200" :
+                              "bg-blue-100 text-blue-700 border border-blue-200"
+                            }`}>
+                              <span className={`w-1.5 h-1.5 rounded-full animate-ping ${user.fraud.severity === "High" ? "bg-red-500" : "bg-yellow-500"}`} />
+                              {user.fraud.severity} Fraud Risk
+                              
+                              {/* Tooltip */}
+                              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-3 bg-slate-800 text-white text-xs rounded-xl shadow-xl opacity-0 invisible group-hover/fraud:opacity-100 group-hover/fraud:visible transition-all z-50 normal-case tracking-normal text-left font-normal">
+                                <p className="font-bold mb-1 text-slate-100 text-sm">{user.fraud.type}</p>
+                                <p className="text-slate-300 mb-2 leading-relaxed">{user.fraud.reason}</p>
+                                <div className="bg-slate-700/50 p-2 rounded border border-slate-600">
+                                  <span className="font-semibold text-slate-200">Recommendation:</span> <span className="text-slate-300">{user.fraud.recommendation}</span>
+                                </div>
+                                <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800" />
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-slate-400 text-xs font-medium">—</span>
+                          )}
                         </td>
 
                         {/* Actions */}

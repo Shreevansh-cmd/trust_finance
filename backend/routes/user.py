@@ -41,8 +41,15 @@ def get_dashboard(user_id: int):
         "savings": user["savings"]
     })
     
+    from services.risk_detection import detect_risk, detect_fraud
+    
+    risk_info = detect_risk(user)
+    fraud_info = detect_fraud(user)
+    
     # Update score in memory
     user["trust_score"] = score_data["score"]
+    user["risk_level"] = risk_info["risk_level"]
+    user["fraud"] = fraud_info
         
     return {
         "user_id": user["id"],
@@ -50,6 +57,15 @@ def get_dashboard(user_id: int):
         "email": user["email"],
         "trust_score": user["trust_score"],
         "risk_level": user["risk_level"],
+        "risk_score": risk_info["risk_score"],
+        "risk_message": risk_info["message"],
+        "fraud": {
+            "detected": fraud_info["detected"],
+            "type": fraud_info["type"],
+            "severity": fraud_info["severity"],
+            "reason": fraud_info["reason"],
+            "recommendation": fraud_info["recommendation"]
+        },
         "loan_limit": user["income"] * 3,
         "financial_summary": {
             "income": user["income"],
@@ -92,6 +108,32 @@ def update_financials(user_id: int, data: UpdateScore):
     })
         
     return score_res
+
+@router.post("/reset-financials/{user_id}")
+def reset_financials(user_id: int):
+    user = next((u for u in users if u["id"] == user_id), None)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    user["income"] = 50000
+    user["spending"] = 20000
+    user["savings"] = 30000
+    user["trust_score"] = 85
+    user["risk_level"] = "low"
+    user["fraud"] = {
+        "detected": False,
+        "type": "None",
+        "severity": "Low",
+        "reason": "No suspicious activity detected.",
+        "recommendation": "None"
+    }
+    user["history"] = [
+        {"month": "Jan", "income": 48000, "spending": 19000, "savings": 25000, "trust_score": 80},
+        {"month": "Feb", "income": 48000, "spending": 22000, "savings": 26000, "trust_score": 78},
+        {"month": "Mar", "income": 50000, "spending": 21000, "savings": 28000, "trust_score": 82},
+        {"month": "Apr", "income": 50000, "spending": 20000, "savings": 30000, "trust_score": 85}
+    ]
+    return {"message": "Reset successful"}
 
 @router.post("/apply-loan/{user_id}")
 def apply_loan(user_id: int, loan_data: ApplyLoan):
